@@ -1,0 +1,1156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#06131a">
+<title>Abyssalis V2</title>
+<style>
+:root{
+  --ink:#ecfbff;
+  --muted:#9fc2ca;
+  --panel:rgba(6,18,25,.90);
+  --panel2:rgba(13,34,43,.94);
+  --line:rgba(118,211,223,.28);
+  --accent:#74e3ef;
+  --accent2:#c4fbff;
+  --good:#77d79e;
+  --warn:#efc36f;
+  --danger:#ef7979;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#030b10;color:var(--ink);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button{font:inherit}
+#abyssalis{
+  position:fixed;inset:0;overflow:hidden;background:#06131a;user-select:none;
+}
+#game{
+  position:absolute;inset:0;width:100%;height:100%;display:block;
+  image-rendering:pixelated;touch-action:none;background:#06131a;
+}
+.hidden{display:none!important}
+
+/* ----- IN-GAME HUD ----- */
+#hud{position:absolute;inset:0;pointer-events:none}
+.top-left{
+  position:absolute;top:14px;left:14px;display:flex;flex-direction:column;gap:7px;
+  width:min(270px,42vw);
+}
+.life-row,.depth-chip,.world-chip{
+  background:rgba(3,14,20,.70);border:1px solid rgba(255,255,255,.12);
+  backdrop-filter:blur(5px);border-radius:12px;padding:7px 9px;
+}
+.life-label{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:850;margin-bottom:5px}
+.life-track{height:8px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden}
+#lifeFill{height:100%;width:100%;background:linear-gradient(90deg,#72d79a,#9df0ba)}
+.depth-chip,.world-chip{font-size:11px;color:var(--muted);width:max-content;max-width:100%}
+.depth-chip strong,.world-chip strong{color:var(--ink)}
+.top-right{
+  position:absolute;top:14px;right:14px;display:flex;flex-direction:column;align-items:flex-end;gap:8px
+}
+#miniWrap{
+  width:180px;max-width:34vw;background:rgba(3,14,20,.68);border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;padding:5px;backdrop-filter:blur(5px)
+}
+#mini{display:block;width:100%;height:74px;border-radius:8px;background:#061219;image-rendering:pixelated}
+.time-chip,.threat-chip{
+  background:rgba(3,14,20,.70);border:1px solid rgba(255,255,255,.12);
+  border-radius:999px;padding:6px 9px;font-size:10px;color:var(--muted)
+}
+.time-chip strong,.threat-chip strong{color:var(--ink)}
+#banner{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  background:rgba(3,12,18,.88);border:1px solid rgba(255,255,255,.15);border-radius:999px;
+  padding:7px 12px;font-size:11px;font-weight:900;letter-spacing:.08em;text-transform:uppercase;
+  opacity:0;transition:opacity .18s ease;white-space:nowrap
+}
+#banner.show{opacity:1}
+#bossBar{
+  position:absolute;left:50%;transform:translateX(-50%);bottom:96px;width:min(620px,72vw);
+  background:rgba(3,12,18,.86);border:1px solid rgba(255,255,255,.15);border-radius:12px;padding:8px 10px;
+  display:none
+}
+#bossBar.show{display:block}
+.boss-label{display:flex;justify-content:space-between;gap:10px;font-size:10px;font-weight:900;letter-spacing:.05em;margin-bottom:5px}
+.boss-track{height:8px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.11)}
+#bossFill{height:100%;width:100%;background:linear-gradient(90deg,#9c72ca,#d79ce3)}
+#hotbar{
+  position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+  display:grid;grid-template-columns:repeat(6,56px);gap:6px;pointer-events:auto
+}
+.slot{
+  position:relative;width:56px;height:56px;padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,.14);
+  background:rgba(3,14,20,.74);color:var(--ink);cursor:pointer;backdrop-filter:blur(4px)
+}
+.slot.active{outline:2px solid var(--accent);background:rgba(18,57,66,.86)}
+.slot .swatch{width:20px;height:20px;margin:5px auto 2px;border-radius:5px;border:1px solid rgba(255,255,255,.16)}
+.slot .name{display:block;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.slot .key{position:absolute;top:3px;left:5px;font-size:8px;color:var(--muted)}
+.slot .count{position:absolute;right:5px;bottom:3px;font-size:9px;color:var(--muted)}
+#hint{
+  position:absolute;left:50%;bottom:82px;transform:translateX(-50%);
+  background:rgba(3,14,20,.62);border:1px solid rgba(255,255,255,.10);border-radius:999px;
+  padding:5px 9px;font-size:9px;color:var(--muted);white-space:nowrap
+}
+
+/* ----- GAME OVERLAYS / MENUS ----- */
+.overlay{
+  position:absolute;inset:0;background:rgba(1,7,11,.68);display:flex;align-items:center;justify-content:center;
+  padding:18px;pointer-events:auto
+}
+.menu-card{
+  width:min(760px,94vw);max-height:86vh;overflow:auto;background:var(--panel);
+  border:1px solid var(--line);border-radius:18px;padding:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,.32)
+}
+.menu-title{font-size:28px;font-weight:950;letter-spacing:.11em;margin:0 0 4px}
+.menu-sub{font-size:11px;color:var(--muted);margin-bottom:18px;line-height:1.5}
+.menu-actions{display:flex;flex-wrap:wrap;gap:8px}
+.game-btn{
+  min-height:44px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);
+  color:var(--ink);padding:9px 12px;font-size:12px;font-weight:850;cursor:pointer
+}
+.game-btn:hover{border-color:var(--accent);background:rgba(22,61,70,.96)}
+.game-btn.primary{background:linear-gradient(180deg,#24626e,#174550);border-color:#65d2df}
+.game-btn.danger{border-color:rgba(239,121,121,.45)}
+.game-btn:disabled{opacity:.45;cursor:not-allowed}
+.menu-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:14px}
+.panel{
+  border:1px solid var(--line);border-radius:14px;background:rgba(10,26,34,.72);padding:12px
+}
+.panel h3{margin:0 0 10px;font-size:11px;text-transform:uppercase;letter-spacing:.10em;color:var(--muted)}
+.inventory-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:7px}
+.inv-item{
+  min-height:64px;border:1px solid rgba(255,255,255,.10);border-radius:10px;padding:7px;
+  background:rgba(255,255,255,.03);font-size:10px
+}
+.inv-item .dot{width:20px;height:20px;border-radius:5px;margin-bottom:5px;border:1px solid rgba(255,255,255,.14)}
+.inv-item strong{display:block;font-size:10px}
+.inv-item span{color:var(--muted)}
+.craft-list{display:flex;flex-direction:column;gap:7px}
+.craft{
+  text-align:left;width:100%;min-height:52px;border:1px solid rgba(255,255,255,.10);border-radius:10px;
+  padding:8px;background:rgba(255,255,255,.03);color:var(--ink);cursor:pointer
+}
+.craft:hover{border-color:var(--accent)}
+.craft:disabled{opacity:.4;cursor:not-allowed}
+.craft small{display:block;color:var(--muted);margin-top:3px}
+.quest{font-size:11px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.quest:last-child{border-bottom:0}
+.quest.done{color:var(--good);text-decoration:line-through}
+.discovery{font-size:11px;color:var(--muted);line-height:1.5}
+#titleScreen{
+  background:
+    radial-gradient(circle at 50% 30%,rgba(67,149,162,.18),transparent 34%),
+    linear-gradient(rgba(2,9,14,.50),rgba(2,9,14,.80));
+}
+.title-card{text-align:center;width:min(680px,94vw);padding:22px}
+.logo{font-size:clamp(36px,8vw,72px);font-weight:1000;letter-spacing:.14em;line-height:.92;text-shadow:0 0 24px rgba(116,227,239,.16)}
+.logo-sub{margin-top:8px;font-size:11px;color:var(--muted);letter-spacing:.24em;text-transform:uppercase}
+.title-copy{margin:20px auto;max-width:560px;color:#b8d5db;font-size:12px;line-height:1.6}
+.title-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap}
+.version{margin-top:14px;font-size:9px;color:#6c939d;letter-spacing:.08em}
+#pauseMenu .menu-card{max-width:420px;text-align:center}
+.pause-title{font-size:30px;font-weight:950;letter-spacing:.10em;margin:0 0 4px}
+.pause-stack{display:grid;gap:8px;margin-top:16px}
+#touchControls{
+  display:none;position:absolute;inset:0;pointer-events:none
+}
+.touch-cluster{position:absolute;bottom:92px;display:flex;gap:7px;pointer-events:auto}
+.touch-left{left:12px}.touch-right{right:12px}
+.touch-btn{
+  width:52px;height:52px;border-radius:50%;border:1px solid rgba(255,255,255,.17);
+  background:rgba(3,14,20,.66);color:var(--ink);font-weight:900
+}
+#toast{
+  position:absolute;left:14px;bottom:88px;max-width:min(420px,70vw);
+  padding:7px 9px;border-radius:10px;background:rgba(3,14,20,.68);border:1px solid rgba(255,255,255,.10);
+  color:var(--muted);font-size:10px;opacity:1
+}
+@media(max-width:720px){
+  #hotbar{grid-template-columns:repeat(6,46px);gap:4px}
+  .slot{width:46px;height:50px}
+  .slot .name{display:none}
+  #miniWrap{width:130px}
+  .top-left{width:48vw}
+  #hint{display:none}
+  .menu-grid{grid-template-columns:1fr}
+  .inventory-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+  #touchControls{display:block}
+}
+@media(max-width:420px){
+  #hotbar{grid-template-columns:repeat(6,42px)}
+  .slot{width:42px;height:46px}
+  #miniWrap{width:105px}
+  .inventory-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(prefers-reduced-motion:reduce){#banner{transition:none}}
+</style>
+</head>
+<body>
+<div id="abyssalis">
+  <canvas id="game" tabindex="0" aria-label="Abyssalis game world"></canvas>
+
+  <div id="hud">
+    <div class="top-left">
+      <div class="life-row">
+        <div class="life-label"><span>Vitality</span><span id="healthText">100 / 100</span></div>
+        <div class="life-track"><div id="lifeFill"></div></div>
+      </div>
+      <div class="depth-chip"><strong id="depthText">Surface</strong> · <span id="depthNum">24</span></div>
+      <div class="world-chip">World Pulse: <strong id="pulseText">Calm</strong></div>
+    </div>
+
+    <div class="top-right">
+      <div id="miniWrap"><canvas id="mini" width="180" height="74"></canvas></div>
+      <div class="time-chip"><strong id="timeText">Dawn</strong> · World <span id="seedText">000000</span></div>
+      <div class="threat-chip">Threat <strong id="threatText">0%</strong></div>
+    </div>
+
+    <div id="banner">THE DEEP IS LISTENING</div>
+
+    <div id="bossBar">
+      <div class="boss-label"><span>ABYSS WARDEN</span><span id="bossHpText">180 / 180</span></div>
+      <div class="boss-track"><div id="bossFill"></div></div>
+    </div>
+
+    <div id="hint">E inventory · ESC pause · M map · F attack · click mine · right-click place</div>
+    <div id="hotbar"></div>
+    <div id="toast" aria-live="polite">Press E for inventory and crafting.</div>
+  </div>
+
+  <div id="touchControls">
+    <div class="touch-cluster touch-left">
+      <button id="touchLeft" class="touch-btn" type="button">◀</button>
+      <button id="touchRightMove" class="touch-btn" type="button">▶</button>
+    </div>
+    <div class="touch-cluster touch-right">
+      <button id="touchJump" class="touch-btn" type="button">↑</button>
+      <button id="touchAttack" class="touch-btn" type="button">⚔</button>
+    </div>
+  </div>
+
+  <div id="titleScreen" class="overlay">
+    <div class="title-card">
+      <div class="logo">ABYSSALIS</div>
+      <div class="logo-sub">The Living Deep</div>
+      <div class="title-copy">
+        A living 2D survival world of collapsing caves, flooding tunnels, ancient ruins, creatures, crafting, and an Abyss that reacts to how deeply you disturb it.
+      </div>
+      <div class="title-actions">
+        <button id="playBtn" class="game-btn primary" type="button">Enter World</button>
+        <button id="newTitleWorld" class="game-btn" type="button">Generate New World</button>
+      </div>
+      <div class="version">V2 IMMERSIVE BUILD · ONE FILE</div>
+    </div>
+  </div>
+
+  <div id="inventoryMenu" class="overlay hidden">
+    <div class="menu-card">
+      <div class="menu-title">Inventory</div>
+      <div class="menu-sub">Everything here is part of the game. Press E again to return to the world.</div>
+      <div class="menu-grid">
+        <section class="panel">
+          <h3>Materials</h3>
+          <div id="inventoryGrid" class="inventory-grid"></div>
+          <h3 style="margin-top:14px">Expedition</h3>
+          <div id="questList"></div>
+        </section>
+        <section class="panel">
+          <h3>Forge</h3>
+          <div id="craftList" class="craft-list"></div>
+          <h3 style="margin-top:14px">Discovery</h3>
+          <div id="discoveryText" class="discovery">Surface winds. Quiet stone below. Something much older beneath that.</div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="pauseMenu" class="overlay hidden">
+    <div class="menu-card">
+      <div class="pause-title">PAUSED</div>
+      <div class="menu-sub">The world is frozen.</div>
+      <div class="pause-stack">
+        <button id="resumeBtn" class="game-btn primary" type="button">Resume</button>
+        <button id="fullscreenBtn" class="game-btn" type="button">Fullscreen</button>
+        <button id="pauseNewWorld" class="game-btn" type="button">New World</button>
+        <button id="returnTitle" class="game-btn danger" type="button">Return to Title</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+const app=document.getElementById("abyssalis");
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const mini=document.getElementById("mini");
+const mctx=mini.getContext("2d");
+
+const ui={
+  hud:document.getElementById("hud"),
+  healthText:document.getElementById("healthText"),
+  lifeFill:document.getElementById("lifeFill"),
+  depthText:document.getElementById("depthText"),
+  depthNum:document.getElementById("depthNum"),
+  pulseText:document.getElementById("pulseText"),
+  timeText:document.getElementById("timeText"),
+  seedText:document.getElementById("seedText"),
+  threatText:document.getElementById("threatText"),
+  banner:document.getElementById("banner"),
+  bossBar:document.getElementById("bossBar"),
+  bossHpText:document.getElementById("bossHpText"),
+  bossFill:document.getElementById("bossFill"),
+  hotbar:document.getElementById("hotbar"),
+  toast:document.getElementById("toast"),
+  inventoryMenu:document.getElementById("inventoryMenu"),
+  inventoryGrid:document.getElementById("inventoryGrid"),
+  craftList:document.getElementById("craftList"),
+  questList:document.getElementById("questList"),
+  discoveryText:document.getElementById("discoveryText"),
+  pauseMenu:document.getElementById("pauseMenu"),
+  titleScreen:document.getElementById("titleScreen")
+};
+
+const TILE=24,WW=260,WH=104,GRAV=1200,MAXFALL=640,REACH=TILE*5.4;
+const T={AIR:0,GRASS:1,DIRT:2,STONE:3,WOOD:4,LEAF:5,CRYSTAL:6,COPPER:7,ANCIENT:8,WATER:9,ABYSS:10,TORCH:11};
+
+const info={
+  0:{name:"Air",solid:false,color:"#000"},
+  1:{name:"Mossgrass",solid:true,color:"#4f8b5b",hard:1},
+  2:{name:"Soil",solid:true,color:"#7a563c",hard:1},
+  3:{name:"Stone",solid:true,color:"#66717a",hard:1},
+  4:{name:"Wood",solid:true,color:"#8c6642",hard:1},
+  5:{name:"Leaf",solid:false,color:"#487a54",hard:1},
+  6:{name:"Lumen Crystal",solid:true,color:"#6fc4d8",hard:2},
+  7:{name:"Copper Ore",solid:true,color:"#b77a53",hard:2},
+  8:{name:"Ancient Masonry",solid:true,color:"#6a6578",hard:3},
+  9:{name:"Water",solid:false,color:"#2d6f98"},
+  10:{name:"Abyssstone",solid:true,color:"#25283c",hard:3},
+  11:{name:"Torch",solid:false,color:"#e7b85c",hard:1}
+};
+
+const hotTypes=[T.DIRT,T.STONE,T.WOOD,T.TORCH,T.ANCIENT,T.GRASS];
+const keys=new Set();
+const touch={left:false,right:false};
+
+let world=new Uint8Array(WW*WH),surface=new Int16Array(WW),waterQ=[];
+let enemies=[],particles=[],floats=[],boss=null;
+let selected=0,mode="mine",gameStarted=false,paused=true,inventoryOpen=false;
+let seed=0,last=performance.now(),worldTime=.18,threat=0,pulse=100;
+let spawnCd=0,waterCd=0,mapCd=0,attackFlash=0,shake=0,viewW=innerWidth,viewH=innerHeight;
+let camera={x:0,y:0},bannerTimer=null,toastTimer=null;
+let discoveredRuin=false,reachedCrystal=false,reachedAbyss=false,forgedCopper=false,defeatedWarden=false;
+
+const inv={};
+const upgrades={pick:1,attack:12,maxHp:100};
+const player={x:0,y:0,w:15,h:26,vx:0,vy:0,grounded:false,hp:100,invuln:0,facing:1,attackCd:0};
+
+function idx(x,y){return y*WW+x}
+function inside(x,y){return x>=0&&x<WW&&y>=0&&y<WH}
+function get(x,y){return inside(x,y)?world[idx(x,y)]:T.ABYSS}
+function set(x,y,v){if(inside(x,y))world[idx(x,y)]=v}
+function rng32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+
+function resetProgress(){
+  Object.keys(inv).forEach(k=>delete inv[k]);
+  inv[T.DIRT]=25;inv[T.STONE]=10;inv[T.WOOD]=14;inv[T.TORCH]=8;
+  inv[T.ANCIENT]=0;inv[T.GRASS]=0;inv[T.COPPER]=0;inv[T.CRYSTAL]=0;
+  upgrades.pick=1;upgrades.attack=12;upgrades.maxHp=100;forgedCopper=false;
+}
+
+function generateWorld(){
+  seed=Math.floor(Math.random()*900000)+100000;
+  const r=rng32(seed);
+  world=new Uint8Array(WW*WH);surface=new Int16Array(WW);waterQ=[];enemies=[];particles=[];floats=[];boss=null;
+
+  let h=25;
+  for(let x=0;x<WW;x++){
+    h+=(r()-.5)*1.55+Math.sin(x/17)*.08;
+    h=Math.max(19,Math.min(33,h));
+    const sy=Math.round(h+Math.sin(x/9)*2+Math.sin(x/31)*3);
+    surface[x]=sy;
+    for(let y=sy;y<WH;y++){
+      let q=T.STONE;
+      if(y===sy)q=T.GRASS;
+      else if(y<sy+5)q=T.DIRT;
+      else if(y>80)q=T.ABYSS;
+      set(x,y,q);
+    }
+  }
+
+  for(let n=0;n<390;n++){
+    const cx=4+Math.floor(r()*(WW-8));
+    const cy=31+Math.floor(r()*(WH-35));
+    const rad=1.6+r()*5.0;
+    for(let y=Math.floor(cy-rad);y<=Math.ceil(cy+rad);y++){
+      for(let x=Math.floor(cx-rad);x<=Math.ceil(cx+rad);x++){
+        const dx=(x-cx)/rad,dy=(y-cy)/(rad*.72);
+        if(dx*dx+dy*dy<1&&r()>.10)set(x,y,T.AIR);
+      }
+    }
+  }
+
+  for(let n=0;n<285;n++){
+    const x=3+Math.floor(r()*(WW-6));
+    const y=37+Math.floor(r()*(WH-41));
+    if(get(x,y)===T.STONE||get(x,y)===T.ABYSS){
+      const ore=y>52&&r()>.46?T.CRYSTAL:T.COPPER;
+      const cluster=2+Math.floor(r()*5);
+      for(let k=0;k<cluster;k++){
+        const ox=x+Math.floor(r()*3)-1,oy=y+Math.floor(r()*3)-1;
+        if(inside(ox,oy)&&get(ox,oy)!==T.AIR)set(ox,oy,ore);
+      }
+    }
+  }
+
+  for(let x=8;x<WW-8;x+=5+Math.floor(r()*8)){
+    const y=surface[x];
+    if(get(x,y)===T.GRASS&&r()>.18){
+      const trunk=3+Math.floor(r()*4);
+      for(let j=1;j<=trunk;j++)set(x,y-j,T.WOOD);
+      for(let oy=-2;oy<=1;oy++)for(let ox=-2;ox<=2;ox++){
+        if(Math.abs(ox)+Math.abs(oy)<4&&r()>.16)set(x+ox,y-trunk+oy,T.LEAF);
+      }
+    }
+  }
+
+  for(let n=0;n<11;n++){
+    const rx=25+Math.floor(r()*(WW-50)),ry=51+Math.floor(r()*31);
+    const rw=5+Math.floor(r()*7),rh=3+Math.floor(r()*5);
+    for(let y=ry;y<ry+rh;y++)for(let x=rx;x<rx+rw;x++){
+      const edge=x===rx||x===rx+rw-1||y===ry||y===ry+rh-1;
+      set(x,y,edge?T.ANCIENT:T.AIR);
+    }
+  }
+
+  for(let n=0;n<17;n++){
+    const wx=8+Math.floor(r()*(WW-16)),wy=surface[wx]-1,width=2+Math.floor(r()*6);
+    for(let dx=0;dx<width;dx++){
+      if(inside(wx+dx,wy)){set(wx+dx,wy,T.WATER);waterQ.push([wx+dx,wy])}
+    }
+  }
+
+  player.x=12*TILE;
+  player.y=(surface[12]-3)*TILE;
+  player.vx=player.vy=0;
+  player.hp=upgrades.maxHp;
+  camera.x=0;camera.y=0;
+  discoveredRuin=false;reachedCrystal=false;reachedAbyss=false;defeatedWarden=false;
+  threat=0;pulse=100;worldTime=.18;
+  ui.seedText.textContent=seed;
+  ui.discoveryText.textContent="Surface winds. Quiet stone below. Something much older beneath that.";
+  toast("World "+seed+" awakened.");
+  refreshMenus();
+  drawMini();
+}
+
+function solidRect(x,y,w,h){
+  const l=Math.floor(x/TILE),r=Math.floor((x+w-1)/TILE);
+  const t=Math.floor(y/TILE),b=Math.floor((y+h-1)/TILE);
+  for(let yy=t;yy<=b;yy++)for(let xx=l;xx<=r;xx++){
+    if(info[get(xx,yy)].solid)return true;
+  }
+  return false;
+}
+
+function movePlayer(dt){
+  const L=keys.has("a")||keys.has("arrowleft")||touch.left;
+  const R=keys.has("d")||keys.has("arrowright")||touch.right;
+  const accel=player.grounded?1100:650;
+  if(L){player.vx-=accel*dt;player.facing=-1}
+  if(R){player.vx+=accel*dt;player.facing=1}
+  if(!L&&!R)player.vx*=Math.pow(.0008,dt);
+  player.vx=Math.max(-190,Math.min(190,player.vx));
+  player.vy=Math.min(MAXFALL,player.vy+GRAV*dt);
+
+  let nx=player.x+player.vx*dt;
+  if(!solidRect(nx,player.y,player.w,player.h))player.x=nx;
+  else player.vx=0;
+
+  let ny=player.y+player.vy*dt;
+  player.grounded=false;
+  if(!solidRect(player.x,ny,player.w,player.h))player.y=ny;
+  else{
+    if(player.vy>0)player.grounded=true;
+    player.vy=0;
+  }
+
+  player.x=Math.max(TILE,Math.min(WW*TILE-player.w-TILE,player.x));
+  if(player.y>WH*TILE){
+    hurt(25);
+    player.y=(surface[Math.floor(player.x/TILE)]-4)*TILE;
+    player.vy=0;
+  }
+}
+
+function jump(){
+  if(paused||inventoryOpen)return;
+  if(player.grounded){player.vy=-430;player.grounded=false}
+  else{
+    const t=get(Math.floor((player.x+player.w/2)/TILE),Math.floor((player.y+player.h/2)/TILE));
+    if(t===T.WATER)player.vy=-250;
+  }
+}
+
+function hurt(n){
+  if(player.invuln>0||paused)return;
+  player.hp=Math.max(0,player.hp-n);
+  player.invuln=.75;shake=5;
+  floatText(player.x,player.y-8,"-"+n,"#ff8c8c");
+  if(player.hp<=0){
+    toast("The Deep returned you to the surface.");
+    player.hp=upgrades.maxHp;
+    player.x=12*TILE;
+    player.y=(surface[12]-4)*TILE;
+    player.vx=player.vy=0;
+    threat=Math.max(0,threat-15);
+  }
+}
+
+function floatText(x,y,text,color){
+  floats.push({x,y,text,color,life:1});
+  if(floats.length>24)floats.shift();
+}
+
+function spawnParticles(x,y,color,count=7){
+  for(let i=0;i<count;i++){
+    particles.push({x,y,vx:(Math.random()-.5)*100,vy:(Math.random()-.8)*100,life:.35+Math.random()*.45,color});
+  }
+  if(particles.length>140)particles.splice(0,particles.length-140);
+}
+
+function attack(){
+  if(paused||inventoryOpen||player.attackCd>0)return;
+  player.attackCd=.34;attackFlash=.14;
+  const cx=player.x+player.w/2+player.facing*28;
+  const cy=player.y+player.h/2;
+
+  for(const e of enemies){
+    if(!e.dead&&Math.hypot(e.x-cx,e.y-cy)<46){
+      e.hp-=upgrades.attack;e.vx+=player.facing*150;
+      floatText(e.x,e.y-12,"-"+upgrades.attack,"#ffe4a6");
+      if(e.hp<=0){e.dead=true;threat=Math.max(0,threat-1)}
+    }
+  }
+
+  if(boss&&!boss.dead&&Math.hypot(boss.x-cx,boss.y-cy)<72){
+    boss.hp-=upgrades.attack;
+    floatText(boss.x,boss.y-24,"-"+upgrades.attack,"#f7d6ff");
+    if(boss.hp<=0){
+      boss.dead=true;defeatedWarden=true;threat=Math.max(0,threat-30);
+      eventBanner("THE WARDEN FALLS");
+      toast("The Abyss remembers your name.");
+      refreshMenus();
+    }
+  }
+}
+
+function pointerTile(e){
+  const r=canvas.getBoundingClientRect();
+  return{
+    x:Math.floor((e.clientX-r.left+camera.x)/TILE),
+    y:Math.floor((e.clientY-r.top+camera.y)/TILE)
+  };
+}
+
+function reachable(tx,ty){
+  return Math.hypot((tx+.5)*TILE-(player.x+player.w/2),(ty+.5)*TILE-(player.y+player.h/2))<=REACH;
+}
+
+function mineTile(tx,ty){
+  if(paused||inventoryOpen||!inside(tx,ty)||!reachable(tx,ty))return;
+  const t=get(tx,ty);
+  if(t===T.AIR||t===T.WATER)return;
+
+  if(info[t].hard>upgrades.pick){
+    toast(info[t].name+" needs a stronger tool.");
+    return;
+  }
+
+  set(tx,ty,T.AIR);
+  if(t!==T.LEAF)inv[t]=(inv[t]||0)+1;
+  spawnParticles((tx+.5)*TILE,(ty+.5)*TILE,info[t].color,8);
+  pulse=Math.max(0,pulse-(t===T.CRYSTAL?1.5:.12));
+  threat=Math.min(100,threat+(t===T.CRYSTAL?.9:.08));
+
+  if(t===T.ANCIENT&&!discoveredRuin){
+    discoveredRuin=true;
+    eventBanner("ANCIENT SIGNAL DETECTED");
+    ui.discoveryText.textContent="The masonry is warm. Symbols repeat one phrase: DO NOT OPEN THE LOWER SEA.";
+  }
+  if(t===T.CRYSTAL)reachedCrystal=true;
+
+  [[0,-1],[0,1],[-1,0],[1,0]].forEach(([dx,dy])=>{
+    if(get(tx+dx,ty+dy)===T.WATER)waterQ.push([tx+dx,ty+dy]);
+  });
+
+  renderHotbar();refreshMenus();
+}
+
+function placeTile(tx,ty){
+  if(paused||inventoryOpen||!inside(tx,ty)||!reachable(tx,ty))return;
+  const t=hotTypes[selected];
+  if((inv[t]||0)<=0){toast("No "+info[t].name+" left.");return}
+  if(get(tx,ty)!==T.AIR&&get(tx,ty)!==T.WATER)return;
+
+  const px=tx*TILE,py=ty*TILE;
+  const intersects=!(px+TILE<player.x||px>player.x+player.w||py+TILE<player.y||py>player.y+player.h);
+  if(intersects)return;
+
+  set(tx,ty,t);inv[t]--;
+  spawnParticles((tx+.5)*TILE,(ty+.5)*TILE,info[t].color,4);
+  renderHotbar();refreshMenus();
+}
+
+function waterStep(dt){
+  waterCd-=dt;
+  if(waterCd>0)return;
+  waterCd=.11;
+  const steps=Math.min(24,waterQ.length);
+
+  for(let i=0;i<steps;i++){
+    const c=waterQ.shift();if(!c)break;
+    const [x,y]=c;if(get(x,y)!==T.WATER)continue;
+    for(const [nx,ny] of [[x,y+1],[x-1,y],[x+1,y]]){
+      if(inside(nx,ny)&&get(nx,ny)===T.AIR){
+        set(nx,ny,T.WATER);waterQ.push([nx,ny]);
+        if(ny>y)break;
+      }
+    }
+  }
+}
+
+function spawnEnemy(){
+  if(enemies.length>=11)return;
+  const d=Math.floor(player.y/TILE);
+  const dir=Math.random()<.5?-1:1;
+  const ex=Math.floor(player.x/TILE)+dir*(9+Math.floor(Math.random()*8));
+  const ey=Math.min(WH-3,Math.max(2,d+Math.floor(Math.random()*7)-3));
+  if(ex<2||ex>WW-3||get(ex,ey)!==T.AIR)return;
+
+  const kind=d>70?"shade":d>45?"crawler":"mote";
+  const s=kind==="shade"?[44,20,96]:kind==="crawler"?[30,14,82]:[18,9,68];
+  enemies.push({kind,x:ex*TILE,y:ey*TILE,w:18,h:18,vx:0,vy:0,hp:s[0],maxHp:s[0],damage:s[1],speed:s[2],attackCd:0,dead:false});
+}
+
+function enemyStep(e,dt){
+  if(e.dead)return;
+  const dx=player.x-e.x,dist=Math.abs(dx);
+  if(dist<380)e.vx+=Math.sign(dx)*e.speed*dt*2.4;
+  else e.vx*=.96;
+
+  e.vx=Math.max(-e.speed,Math.min(e.speed,e.vx));
+  e.vy=Math.min(500,e.vy+GRAV*dt*.7);
+
+  const nx=e.x+e.vx*dt;
+  if(!solidRect(nx,e.y,e.w,e.h))e.x=nx;
+  else{if(e.kind!=="mote"&&e.vy>=0)e.vy=-260;e.vx*=-.25}
+
+  const ny=e.y+e.vy*dt;
+  if(!solidRect(e.x,ny,e.w,e.h))e.y=ny;
+  else e.vy=0;
+
+  e.attackCd-=dt;
+  if(Math.hypot((e.x+9)-(player.x+player.w/2),(e.y+9)-(player.y+player.h/2))<27&&e.attackCd<=0){
+    hurt(e.damage);e.attackCd=1.1;
+  }
+}
+
+function spawnBoss(){
+  if(boss||defeatedWarden)return;
+  boss={x:player.x+280,y:player.y-20,w:44,h:60,vx:0,vy:0,hp:180,maxHp:180,dead:false,attackCd:0,phase:0};
+  threat=Math.max(threat,65);
+  eventBanner("ABYSS WARDEN AWAKENED");
+  ui.discoveryText.textContent="A pressure wave rolls through the lower caverns. Something armored in ancient crystal is moving toward you.";
+}
+
+function bossStep(dt){
+  if(!boss||boss.dead)return;
+  boss.phase+=dt;
+  const dx=player.x-boss.x,dy=player.y-boss.y,dist=Math.max(1,Math.hypot(dx,dy));
+  const speed=75+(boss.hp<90?30:0);
+  boss.vx+=(dx/dist)*speed*dt;
+  boss.vy+=(dy/dist)*speed*dt;
+  boss.vx*=.985;boss.vy*=.985;
+
+  const mag=Math.hypot(boss.vx,boss.vy);
+  if(mag>130){boss.vx=boss.vx/mag*130;boss.vy=boss.vy/mag*130}
+
+  boss.x+=boss.vx*dt;boss.y+=boss.vy*dt;
+  boss.attackCd-=dt;
+
+  if(dist<44&&boss.attackCd<=0){
+    hurt(boss.hp<90?24:18);
+    boss.attackCd=.85;
+  }
+}
+
+function update(dt){
+  if(paused||inventoryOpen||!gameStarted)return;
+
+  movePlayer(dt);
+  worldTime=(worldTime+dt/105)%1;
+  pulse=Math.min(100,pulse+dt*.025);
+  threat=Math.max(0,threat-dt*.018);
+  player.invuln=Math.max(0,player.invuln-dt);
+  player.attackCd=Math.max(0,player.attackCd-dt);
+  attackFlash=Math.max(0,attackFlash-dt);
+  shake=Math.max(0,shake-dt*14);
+
+  spawnCd-=dt;
+  if(spawnCd<=0){
+    spawnCd=2.2+Math.random()*2.6;
+    const d=player.y/TILE;
+    const night=Math.max(0,Math.cos(worldTime*Math.PI*2)*.5+.5);
+    if(d>34||night>.55)spawnEnemy();
+  }
+
+  enemies.forEach(e=>enemyStep(e,dt));
+  enemies=enemies.filter(e=>!e.dead&&Math.abs(e.x-player.x)<900);
+  bossStep(dt);
+  waterStep(dt);
+
+  particles.forEach(p=>{p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=340*dt});
+  particles=particles.filter(p=>p.life>0);
+  floats.forEach(f=>{f.life-=dt;f.y-=24*dt});
+  floats=floats.filter(f=>f.life>0);
+
+  const d=Math.floor(player.y/TILE);
+  if(d>50)reachedCrystal=true;
+  if(d>78&&!reachedAbyss){
+    reachedAbyss=true;
+    threat=Math.max(threat,50);
+    eventBanner("YOU ENTERED THE ABYSS");
+    spawnBoss();
+    refreshMenus();
+  }
+
+  const tx=player.x+player.w/2-viewW/2;
+  const ty=player.y+player.h/2-viewH*.52;
+  camera.x+=(tx-camera.x)*Math.min(1,dt*6);
+  camera.y+=(ty-camera.y)*Math.min(1,dt*5);
+  camera.x=Math.max(0,Math.min(WW*TILE-viewW,camera.x));
+  camera.y=Math.max(0,Math.min(WH*TILE-viewH,camera.y));
+
+  mapCd-=dt;
+  if(mapCd<=0){
+    mapCd=.30;
+    updateHud();
+    drawMini();
+  }
+}
+
+function drawTile(t,sx,sy,tx,ty){
+  if(t===T.AIR)return;
+
+  if(t===T.WATER){
+    ctx.fillStyle="rgba(38,112,157,.72)";
+    ctx.fillRect(sx,sy+3,TILE,TILE-3);
+    ctx.fillStyle="rgba(132,207,229,.35)";
+    ctx.fillRect(sx,sy+3,TILE,2);
+    return;
+  }
+
+  if(t===T.LEAF){
+    ctx.fillStyle=info[t].color;
+    ctx.beginPath();ctx.arc(sx+12,sy+12,11,0,Math.PI*2);ctx.fill();
+    return;
+  }
+
+  ctx.fillStyle=info[t].color;
+  ctx.fillRect(sx,sy,TILE,TILE);
+  ctx.fillStyle="rgba(255,255,255,.06)";ctx.fillRect(sx,sy,TILE,2);
+  ctx.fillStyle="rgba(0,0,0,.12)";ctx.fillRect(sx+TILE-2,sy,2,TILE);
+
+  if(t===T.GRASS){
+    ctx.fillStyle="#80aa62";ctx.fillRect(sx,sy,TILE,5);
+  }else if(t===T.STONE||t===T.ABYSS){
+    ctx.fillStyle=t===T.ABYSS?"#3e3c59":"#82909a";
+    ctx.fillRect(sx+5+(tx%3)*2,sy+6+(ty%2)*5,4,3);
+    ctx.fillRect(sx+14,sy+14,3,4);
+  }else if(t===T.CRYSTAL){
+    ctx.fillStyle="#c7f7ff";
+    ctx.beginPath();ctx.moveTo(sx+12,sy+3);ctx.lineTo(sx+18,sy+12);ctx.lineTo(sx+11,sy+21);ctx.lineTo(sx+6,sy+12);ctx.closePath();ctx.fill();
+  }else if(t===T.COPPER){
+    ctx.fillStyle="#e0a47b";ctx.fillRect(sx+5,sy+6,5,4);ctx.fillRect(sx+14,sy+13,6,5);
+  }else if(t===T.ANCIENT){
+    ctx.strokeStyle="rgba(182,170,224,.45)";ctx.strokeRect(sx+4,sy+4,TILE-8,TILE-8);
+  }else if(t===T.WOOD){
+    ctx.fillStyle="rgba(58,36,23,.28)";ctx.fillRect(sx+9,sy,3,TILE);
+  }else if(t===T.TORCH){
+    ctx.fillStyle="#8f6840";ctx.fillRect(sx+11,sy+9,3,14);
+    ctx.fillStyle="#ffd975";ctx.beginPath();ctx.arc(sx+12.5,sy+7,5,0,Math.PI*2);ctx.fill();
+  }
+}
+
+function render(){
+  const dpr=Math.min(2,devicePixelRatio||1);
+  const w=Math.max(320,innerWidth),h=Math.max(240,innerHeight);
+  if(canvas.width!==Math.floor(w*dpr)||canvas.height!==Math.floor(h*dpr)){
+    canvas.width=Math.floor(w*dpr);canvas.height=Math.floor(h*dpr);
+  }
+  viewW=w;viewH=h;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const s=Math.sin(worldTime*Math.PI*2-Math.PI/2)*.5+.5;
+  const day=Math.max(.12,s);
+  const g=ctx.createLinearGradient(0,0,0,h);
+  g.addColorStop(0,`rgb(${Math.round(8+38*day)},${Math.round(18+82*day)},${Math.round(31+110*day)})`);
+  g.addColorStop(1,`rgb(${Math.round(11+65*day)},${Math.round(27+110*day)},${Math.round(45+125*day)})`);
+  ctx.fillStyle=g;ctx.fillRect(0,0,w,h);
+
+  const depth=player.y/TILE;
+  if(depth>34){
+    ctx.fillStyle=`rgba(3,7,14,${Math.min(.82,(depth-34)/46)})`;
+    ctx.fillRect(0,0,w,h);
+  }
+
+  ctx.save();
+  ctx.translate(shake?(Math.random()-.5)*shake:0,shake?(Math.random()-.5)*shake:0);
+
+  const x0=Math.max(0,Math.floor(camera.x/TILE)-1);
+  const x1=Math.min(WW-1,Math.ceil((camera.x+w)/TILE)+1);
+  const y0=Math.max(0,Math.floor(camera.y/TILE)-1);
+  const y1=Math.min(WH-1,Math.ceil((camera.y+h)/TILE)+1);
+
+  for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+    const t=get(x,y);
+    if(t!==T.AIR)drawTile(t,x*TILE-camera.x,y*TILE-camera.y,x,y);
+  }
+
+  enemies.forEach(e=>{
+    const x=e.x-camera.x,y=e.y-camera.y;
+    ctx.fillStyle=e.kind==="shade"?"rgba(124,105,176,.85)":e.kind==="crawler"?"#b88968":"#a5d7bf";
+    ctx.beginPath();ctx.arc(x+9,y+9,10,0,Math.PI*2);ctx.fill();
+    if(e.hp<e.maxHp){
+      ctx.fillStyle="rgba(0,0,0,.55)";ctx.fillRect(x,y-6,18,3);
+      ctx.fillStyle="#e47d7d";ctx.fillRect(x,y-6,18*(e.hp/e.maxHp),3);
+    }
+  });
+
+  if(boss&&!boss.dead){
+    const x=boss.x-camera.x,y=boss.y-camera.y;
+    ctx.save();
+    ctx.translate(x+22,y+30);ctx.rotate(Math.sin(boss.phase*2)*.08);
+    ctx.fillStyle="#433e67";ctx.fillRect(-18,-24,36,48);
+    ctx.fillStyle="#70c5d4";
+    ctx.beginPath();ctx.moveTo(0,-32);ctx.lineTo(12,-10);ctx.lineTo(4,14);ctx.lineTo(-8,-8);ctx.lineTo(-12,-20);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#ead9ff";ctx.fillRect(-10,-7,7,4);ctx.fillRect(4,-7,7,4);
+    ctx.restore();
+  }
+
+  const px=player.x-camera.x,py=player.y-camera.y;
+  ctx.save();
+  if(player.invuln>0&&Math.floor(player.invuln*12)%2===0)ctx.globalAlpha=.45;
+  ctx.translate(px+player.w/2,py+player.h/2);ctx.scale(player.facing,1);
+  ctx.fillStyle="#d9f2ef";ctx.fillRect(-7,-12,14,20);
+  ctx.fillStyle="#79d6d2";ctx.fillRect(-6,-10,12,6);
+  ctx.fillStyle="#315c68";ctx.fillRect(-7,8,6,5);ctx.fillRect(1,8,6,5);
+  ctx.fillStyle="#f0c7a5";ctx.fillRect(-4,-4,8,6);
+  if(attackFlash>0){
+    ctx.strokeStyle="#f8e8af";ctx.lineWidth=4;ctx.beginPath();ctx.arc(7,0,30,-.8,.8);ctx.stroke();
+  }
+  ctx.restore();
+
+  particles.forEach(p=>{
+    ctx.globalAlpha=Math.max(0,p.life*1.6);
+    ctx.fillStyle=p.color;
+    ctx.fillRect(p.x-camera.x,p.y-camera.y,3,3);
+  });
+  ctx.globalAlpha=1;
+
+  ctx.font="bold 11px system-ui";
+  ctx.textAlign="center";
+  floats.forEach(f=>{
+    ctx.globalAlpha=Math.max(0,f.life);
+    ctx.fillStyle=f.color;
+    ctx.fillText(f.text,f.x-camera.x,f.y-camera.y);
+  });
+  ctx.globalAlpha=1;
+  ctx.restore();
+}
+
+function timeName(){
+  return worldTime<.20?"Dawn":worldTime<.48?"Day":worldTime<.64?"Dusk":worldTime<.90?"Night":"Pre-dawn";
+}
+
+function depthName(d){
+  return d<33?"Surface":d<50?"Underroot":d<68?"Crystal Caverns":d<79?"The Deep":"THE ABYSS";
+}
+
+function updateHud(){
+  const d=Math.floor(player.y/TILE);
+  ui.depthText.textContent=depthName(d);
+  ui.depthNum.textContent=d;
+  ui.healthText.textContent=Math.ceil(player.hp)+" / "+upgrades.maxHp;
+  ui.lifeFill.style.width=Math.max(0,(player.hp/upgrades.maxHp)*100)+"%";
+  ui.pulseText.textContent=pulse>75?"Calm":pulse>45?"Stirring":pulse>20?"Agitated":"Awake";
+  ui.timeText.textContent=timeName();
+  ui.threatText.textContent=Math.round(threat)+"%";
+
+  if(boss&&!boss.dead){
+    ui.bossBar.classList.add("show");
+    ui.bossHpText.textContent=Math.max(0,Math.ceil(boss.hp))+" / "+boss.maxHp;
+    ui.bossFill.style.width=Math.max(0,(boss.hp/boss.maxHp)*100)+"%";
+  }else{
+    ui.bossBar.classList.remove("show");
+  }
+}
+
+function renderHotbar(){
+  ui.hotbar.innerHTML="";
+  hotTypes.forEach((t,i)=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="slot"+(i===selected?" active":"");
+    b.title=info[t].name;
+
+    const sw=document.createElement("div");
+    sw.className="swatch";
+    sw.style.background=info[t].color;
+
+    const key=document.createElement("span");
+    key.className="key";
+    key.textContent=String(i+1);
+
+    const name=document.createElement("span");
+    name.className="name";
+    name.textContent=info[t].name;
+
+    const count=document.createElement("span");
+    count.className="count";
+    count.textContent=inv[t]||0;
+
+    b.append(key,sw,name,count);
+    b.addEventListener("click",()=>{selected=i;renderHotbar()});
+    ui.hotbar.appendChild(b);
+  });
+}
+
+const recipes=[
+  {name:"Copper Pick",cost:{[T.COPPER]:8},done:()=>upgrades.pick>=2,do:()=>{upgrades.pick=2;forgedCopper=true},desc:"Mine crystals and stronger stone."},
+  {name:"Crystal Drill",cost:{[T.COPPER]:10,[T.CRYSTAL]:6},done:()=>upgrades.pick>=3,do:()=>upgrades.pick=3,desc:"Break ancient masonry and Abyssstone."},
+  {name:"Tide Blade",cost:{[T.COPPER]:8,[T.CRYSTAL]:4},done:()=>upgrades.attack>=25,do:()=>upgrades.attack=25,desc:"Attack damage 12 → 25."},
+  {name:"Vitality Charm",cost:{[T.WOOD]:12,[T.CRYSTAL]:5},done:()=>upgrades.maxHp>=120,do:()=>{upgrades.maxHp=120;player.hp=Math.min(120,player.hp+20)},desc:"Maximum health +20."}
+];
+
+function canCraft(r){
+  return Object.entries(r.cost).every(([t,n])=>(inv[t]||0)>=n);
+}
+
+function renderInventory(){
+  ui.inventoryGrid.innerHTML="";
+  [T.DIRT,T.STONE,T.WOOD,T.COPPER,T.CRYSTAL,T.ANCIENT,T.TORCH,T.GRASS].forEach(t=>{
+    const d=document.createElement("div");
+    d.className="inv-item";
+    d.innerHTML='<div class="dot" style="background:'+info[t].color+'"></div><strong>'+info[t].name+'</strong><span>x '+(inv[t]||0)+'</span>';
+    ui.inventoryGrid.appendChild(d);
+  });
+}
+
+function renderCrafting(){
+  ui.craftList.innerHTML="";
+  recipes.forEach(r=>{
+    const b=document.createElement("button");
+    b.type="button";
+    b.className="craft";
+    const done=r.done();
+    const cost=Object.entries(r.cost).map(([t,n])=>n+" "+info[t].name).join(" + ");
+    b.innerHTML="<strong>"+r.name+"</strong><small>"+(done?"Forged":r.desc+" · "+cost)+"</small>";
+    b.disabled=done||!canCraft(r);
+    b.addEventListener("click",()=>{
+      if(!canCraft(r)||r.done())return;
+      Object.entries(r.cost).forEach(([t,n])=>inv[t]-=n);
+      r.do();
+      eventBanner(r.name.toUpperCase()+" FORGED");
+      refreshMenus();renderHotbar();updateHud();
+    });
+    ui.craftList.appendChild(b);
+  });
+}
+
+function renderQuests(){
+  const quests=[
+    ["Descend to the Crystal Caverns",reachedCrystal],
+    ["Forge a Copper Pick",forgedCopper],
+    ["Discover an ancient ruin",discoveredRuin],
+    ["Enter the Abyss",reachedAbyss],
+    ["Defeat the Abyss Warden",defeatedWarden]
+  ];
+  ui.questList.innerHTML="";
+  quests.forEach(([label,done])=>{
+    const d=document.createElement("div");
+    d.className="quest"+(done?" done":"");
+    d.textContent=(done?"✓ ":"○ ")+label;
+    ui.questList.appendChild(d);
+  });
+}
+
+function refreshMenus(){
+  renderInventory();renderCrafting();renderQuests();
+}
+
+function drawMini(){
+  const w=mini.width,h=mini.height;
+  mctx.fillStyle="#07131a";mctx.fillRect(0,0,w,h);
+  const sx=w/WW,sy=h/WH;
+  for(let x=0;x<WW;x+=2)for(let y=0;y<WH;y+=2){
+    const t=get(x,y);if(t===T.AIR)continue;
+    mctx.fillStyle=t===T.WATER?"#2e6f91":t===T.CRYSTAL?"#7ad1dd":t===T.ANCIENT?"#877e9d":t===T.ABYSS?"#2b2940":t===T.GRASS?"#568961":"#48535d";
+    mctx.fillRect(x*sx,y*sy,Math.ceil(sx*2),Math.ceil(sy*2));
+  }
+  mctx.fillStyle="#f6e8a8";
+  mctx.fillRect((player.x/TILE)*sx-1,(player.y/TILE)*sy-1,3,3);
+  if(boss&&!boss.dead){
+    mctx.fillStyle="#d99cdf";
+    mctx.fillRect((boss.x/TILE)*sx-2,(boss.y/TILE)*sy-2,4,4);
+  }
+}
+
+function toast(text){
+  ui.toast.textContent=text;
+  ui.toast.style.opacity="1";
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>ui.toast.style.opacity=".35",3500);
+}
+
+function eventBanner(text){
+  ui.banner.textContent=text;
+  ui.banner.classList.add("show");
+  clearTimeout(bannerTimer);
+  bannerTimer=setTimeout(()=>ui.banner.classList.remove("show"),2600);
+}
+
+function setPause(value){
+  paused=value;
+  ui.pauseMenu.classList.toggle("hidden",!value);
+}
+
+function toggleInventory(){
+  if(!gameStarted)return;
+  inventoryOpen=!inventoryOpen;
+  ui.inventoryMenu.classList.toggle("hidden",!inventoryOpen);
+  if(inventoryOpen){refreshMenus();paused=true}
+  else paused=false;
+}
+
+function startGame(){
+  gameStarted=true;
+  paused=false;
+  inventoryOpen=false;
+  ui.titleScreen.classList.add("hidden");
+  ui.pauseMenu.classList.add("hidden");
+  ui.inventoryMenu.classList.add("hidden");
+  canvas.focus();
+  toast("Welcome to Abyssalis. Press E for inventory.");
+}
+
+function returnToTitle(){
+  gameStarted=false;paused=true;inventoryOpen=false;
+  ui.pauseMenu.classList.add("hidden");
+  ui.inventoryMenu.classList.add("hidden");
+  ui.titleScreen.classList.remove("hidden");
+}
+
+function newWorldAndPlay(){
+  resetProgress();generateWorld();startGame();
+}
+
+function requestFull(){
+  const el=document.documentElement;
+  if(!document.fullscreenElement&&el.requestFullscreen){
+    el.requestFullscreen().catch(()=>toast("Fullscreen was blocked by the browser."));
+  }else if(document.exitFullscreen){
+    document.exitFullscreen();
+  }
+}
+
+function loop(now){
+  const dt=Math.min(.033,(now-last)/1000||.016);
+  last=now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* Mouse / pointer */
+canvas.addEventListener("contextmenu",e=>e.preventDefault());
+canvas.addEventListener("pointerdown",e=>{
+  if(paused||inventoryOpen||!gameStarted)return;
+  canvas.focus();
+  const t=pointerTile(e);
+  if(e.button===2||mode==="place")placeTile(t.x,t.y);
+  else mineTile(t.x,t.y);
+});
+
+/* Keyboard */
+document.addEventListener("keydown",e=>{
+  const k=e.key.toLowerCase();
+
+  if(k==="escape"){
+    e.preventDefault();
+    if(inventoryOpen){
+      inventoryOpen=false;ui.inventoryMenu.classList.add("hidden");paused=false;canvas.focus();
+      return;
+    }
+    if(gameStarted){
+      setPause(!paused);
+      if(!paused)canvas.focus();
+    }
+    return;
+  }
+
+  if(k==="e"&&gameStarted){
+    e.preventDefault();
+    if(!ui.pauseMenu.classList.contains("hidden"))return;
+    toggleInventory();
+    return;
+  }
+
+  if(paused||inventoryOpen||!gameStarted)return;
+
+  if(["a","d","w","arrowleft","arrowright","arrowup"," ","f","1","2","3","4","5","6"].includes(k))e.preventDefault();
+  keys.add(k);
+
+  if(k===" "||k==="w"||k==="arrowup")jump();
+  if(k==="f")attack();
+  if(/^[1-6]$/.test(k)){selected=Number(k)-1;renderHotbar()}
+  if(k==="q"){mode=mode==="mine"?"place":"mine";toast(mode==="mine"?"Mining mode":"Building mode")}
+});
+
+document.addEventListener("keyup",e=>keys.delete(e.key.toLowerCase()));
+
+/* Menus */
+document.getElementById("playBtn").addEventListener("click",startGame);
+document.getElementById("newTitleWorld").addEventListener("click",newWorldAndPlay);
+document.getElementById("resumeBtn").addEventListener("click",()=>{setPause(false);canvas.focus()});
+document.getElementById("fullscreenBtn").addEventListener("click",requestFull);
+document.getElementById("pauseNewWorld").addEventListener("click",newWorldAndPlay);
+document.getElementById("returnTitle").addEventListener("click",returnToTitle);
+
+/* Touch controls */
+function bindHold(id,key){
+  const b=document.getElementById(id);
+  b.addEventListener("pointerdown",e=>{e.preventDefault();touch[key]=true});
+  ["pointerup","pointercancel","pointerleave"].forEach(ev=>b.addEventListener(ev,()=>touch[key]=false));
+}
+bindHold("touchLeft","left");
+bindHold("touchRightMove","right");
+document.getElementById("touchJump").addEventListener("click",jump);
+document.getElementById("touchAttack").addEventListener("click",attack);
+
+/* Start state */
+resetProgress();
+generateWorld();
+renderHotbar();
+updateHud();
+drawMini();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
